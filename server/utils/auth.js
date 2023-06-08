@@ -27,9 +27,14 @@ const authMiddleware = ({ req }) => {
   try {
     const { data } = jwt.verify(token, process.env.JWT_SECRET);
     req.user = data;
-  } catch {
-    return req;
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError) {
+      console.log("Invalid Token");
+      return req;
+    }
+    throw err; // Rethrow other types of exceptions
   }
+
   return req;
 };
 

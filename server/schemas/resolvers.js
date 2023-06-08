@@ -117,6 +117,7 @@ const resolvers = {
     },
 
     login: async (_, { email, password }) => {
+      console.log(email, password);
       const user = await User.findOne({ email });
       if (!user) {
         throw new AuthenticationError("No user with this email found!");
@@ -137,6 +138,32 @@ const resolvers = {
         email: user.email,
         token,
       };
+    },
+
+    googleLogin: async (_, { username, email }) => {
+      const user = await User.findOne({ email });
+      if (!user) {
+        try {
+          const newUser = await User.create({ username, email });
+          const token = signToken(newUser);
+          return {
+            _id: newUser._id,
+            username: newUser.username,
+            email: newUser.email,
+            token,
+          };
+        } catch (error) {
+          throw new ApolloError(error.message);
+        }
+      } else {
+        const token = signToken(user);
+        return {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          token,
+        };
+      }
     },
     addPost: async (parent, { title, description }, context) => {
       if (context.user) {
@@ -217,28 +244,6 @@ const resolvers = {
       throw new ApolloError(
         "you are not authorised to delete this post, please authenticate"
       );
-    },
-    login: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new AuthenticationError("No user with this email found!");
-      }
-
-      // compare the incoming password with the hashed password
-      const isMatch = await bcryptjs.compare(password, user.password);
-      if (!isMatch) {
-        throw new AuthenticationError("Invalid password credintials");
-      }
-
-      //Generate Token
-      const token = signToken(user);
-
-      return {
-        _id: user.id,
-        username: user.username,
-        email: user.email,
-        token,
-      };
     },
     addComment: async (_, { postId, description }, context) => {
       if (context.user) {

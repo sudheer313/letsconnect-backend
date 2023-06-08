@@ -5,7 +5,6 @@ const typeDefs = gql`
     _id: ID!
     username: String!
     email: String!
-    password: String!
     token: ID
     postsCount: Int!
     bio: String
@@ -23,7 +22,7 @@ const typeDefs = gql`
     likesCount: Int!
     author: User!
     commentsCount: Int!
-    }
+  }
 
   type Comment {
     _id: ID!
@@ -40,12 +39,13 @@ const typeDefs = gql`
     getPost(postId: ID!): Post
     getComments(postId: ID!): [Comment!]
     getPostBysearch(searchQuery: String!): [Post]
-    getRandomUsers:[User]
-    getPostsByUser(userId:ID!):[Post]
+    getRandomUsers: [User]
+    getPostsByUser(userId: ID!): [Post]
   }
   type Mutation {
     registerUser(username: String!, email: String!, password: String!): User!
     login(email: String!, password: String!): User!
+    googleLogin(username: String!, email: String!): User!
     addPost(title: String!, description: String!): Post!
     deletePost(postId: ID!): Post!
     likePost(postId: ID!): Post!
