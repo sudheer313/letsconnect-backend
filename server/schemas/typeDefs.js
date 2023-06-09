@@ -30,6 +30,7 @@ const typeDefs = gql`
     postId: ID!
     description: String!
   }
+
   type Query {
     helloWorld: String
     getAllUsers: [User]
@@ -42,6 +43,7 @@ const typeDefs = gql`
     getRandomUsers: [User]
     getPostsByUser(userId: ID!): [Post]
   }
+
   type Mutation {
     registerUser(username: String!, email: String!, password: String!): User!
     login(email: String!, password: String!): User!

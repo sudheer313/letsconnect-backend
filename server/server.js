@@ -2,37 +2,41 @@ const express = require("express");
 const { ApolloServer } = require("apollo-server-express");
 require("dotenv").config();
 
-//db
+// Import the necessary modules
 const { typeDefs, resolvers } = require("./schemas");
 const { authMiddleware } = require("./utils/auth");
+const admin = require("firebase-admin");
+const serviceAccount = require("./config/serviceAcoountKey.json");
 
-const db = require("./config/connection");
+// Initialize the Firebase Admin SDK
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  // Other Firebase configuration options
+});
 
-const PORT = process.env.PORT || 5000;
+// Set up your Express app
 const app = express();
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+// Create the Apollo Server with the necessary configuration
 const server = new ApolloServer({
   typeDefs,
   resolvers,
   context: authMiddleware,
 });
 
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-
-// Create a new instance of an Apollo server with the GraphQL schema
-const startApolloServer = async () => {
+// Start the server and apply the middleware once it's started
+async function startApolloServer() {
   await server.start();
   server.applyMiddleware({ app });
+}
 
-  db.once("open", () => {
-    app.listen(PORT, () => {
-      console.log(`API server running on port ${PORT}!`);
-      console.log(
-        `Use GraphQL at http://localhost:${PORT}${server.graphqlPath}`
-      );
-    });
+// Call the startApolloServer function to start the server
+startApolloServer().then(() => {
+  // Start listening for incoming requests
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
   });
-};
-
-// Call the async function to start the server
-startApolloServer();
+});

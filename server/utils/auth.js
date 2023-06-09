@@ -1,5 +1,6 @@
 const { AuthenticationError } = require("apollo-server-express");
 const jwt = require("jsonwebtoken");
+const admin = require("firebase-admin");
 
 const signToken = ({ email, name, _id }) => {
   const payload = { email, name, _id };
@@ -8,31 +9,25 @@ const signToken = ({ email, name, _id }) => {
   });
 };
 
-//function  for authenticating routes
-const authMiddleware = ({ req }) => {
-  // allows token to be sent via  req.query or headers
-  let token = req.headers.authorization;
-
-  // ["Bearer", "<tokenvalue>"]
-  if (req.headers.authorization) {
-    token = token.split(" ").pop().trim();
-  }
-
-  if (!token) {
-    // return res.status(400).json({ message: 'You have no token!' });
+// Function for authenticating routes
+const authMiddleware = async ({ req }) => {
+  const authorizationHeader = req.headers.authorization;
+  
+  if (!authorizationHeader) {
     return req;
   }
 
-  // verify token and get user data out of it
   try {
-    const { data } = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = data;
+    const token = authorizationHeader.split(" ")[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = decodedToken;
   } catch (err) {
-    if (err instanceof jwt.JsonWebTokenError) {
-      console.log("Invalid Token");
-      return req;
+    if (err instanceof admin.auth.AuthError) {
+      throw new AuthenticationError("Invalid Token");
+    } else {
+      console.log("Error verifying token:", err);
+      throw new AuthenticationError("Error verifying token");
     }
-    throw err; // Rethrow other types of exceptions
   }
 
   return req;
