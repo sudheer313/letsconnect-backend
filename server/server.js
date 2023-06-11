@@ -8,11 +8,13 @@ const { authMiddleware } = require("./utils/auth");
 const admin = require("firebase-admin");
 const serviceAccount = require("./config/serviceAcoountKey.json");
 
-// Initialize the Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  // Other Firebase configuration options
-});
+// Initialize the Firebase Admin SDK only if it hasn't been initialized before
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    // Other Firebase configuration options
+  });
+}
 
 // Set up your Express app
 const app = express();
