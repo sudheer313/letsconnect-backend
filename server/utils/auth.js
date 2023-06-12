@@ -2,14 +2,14 @@ const { AuthenticationError } = require("apollo-server-express");
 const jwt = require("jsonwebtoken");
 const admin = require("firebase-admin");
 
-// Initialize Firebase Admin SDK with service account credentials
-const serviceAccount = require("../config/serviceAcoountKey.json");
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    // Other configuration options
-  });
-}
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  }),
+});
 
 const signToken = ({ email, name, _id }) => {
   const payload = { email, name, _id };

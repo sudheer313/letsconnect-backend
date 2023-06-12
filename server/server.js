@@ -6,15 +6,23 @@ require("dotenv").config();
 const { typeDefs, resolvers } = require("./schemas");
 const { authMiddleware } = require("./utils/auth");
 const admin = require("firebase-admin");
-const serviceAccount = require("./config/serviceAcoountKey.json");
 
-// Initialize the Firebase Admin SDK only if it hasn't been initialized before
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    // Other Firebase configuration options
-  });
+// Create a Firebase credentials object using environment variables
+let privateKey;
+if (process.env.NODE_ENV !== 'production') {
+  privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+} else {
+  privateKey = process.env.FIREBASE_PRIVATE_KEY;
 }
+
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: privateKey,
+  }),
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
+});
 
 // Set up your Express app
 const app = express();
@@ -42,3 +50,4 @@ startApolloServer().then(() => {
     console.log(`Server is running on port ${PORT}`);
   });
 });
+
