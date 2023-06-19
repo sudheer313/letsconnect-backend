@@ -1,87 +1,106 @@
-const User = require("../models/User");
 const { ApolloError, AuthenticationError } = require("apollo-server-express");
 const bcryptjs = require("bcryptjs");
 const { signToken } = require("../utils/auth");
+const User = require("../models/User");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
-const stripeAPI = require("stripe")(process.env.STRIPE_SECRET_KEY); //STRIPE Secret Key
+const stripeAPI = require("stripe")(process.env.STRIPE_SECRET_KEY); // STRIPE Secret Key
 
 const resolvers = {
   Query: {
     helloWorld: (parent, args, context) => {
       if (context.user) {
-        return "hello Wrorld";
+        console.log("Authenticated user accessed helloWorld query");
+        return "hello World";
       }
+      console.error(
+        "Unauthenticated user attempted to access helloWorld query"
+      );
       throw new ApolloError(
-        "you are not authorised to access this resource, please authenticate"
+        "You are not authorized to access this resource. Please authenticate."
       );
     },
     getAllUsers: async (parent, args) => {
       try {
+        console.log("Fetching all users");
         return await User.find();
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching all users:", error);
+        throw new ApolloError("Error occurred while fetching all users");
       }
     },
     getUser: async (parent, { userId }) => {
       try {
+        console.log("Fetching user with ID:", userId);
         return await User.findOne({ _id: userId });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching the user:", error);
+        throw new ApolloError("Error occurred while fetching the user");
       }
     },
     getAllPosts: async (parent, args) => {
       try {
+        console.log("Fetching all posts");
         return await Post.find();
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching all posts:", error);
+        throw new ApolloError("Error occurred while fetching all posts");
       }
     },
-
     getPost: async (_, { postId }) => {
       try {
+        console.log("Fetching post with ID:", postId);
         return await Post.findOne({ _id: postId });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching the post:", error);
+        throw new ApolloError("Error occurred while fetching the post");
       }
     },
     getAllTrendingPosts: async (parent, args) => {
       try {
+        console.log("Fetching all trending posts");
         return await Post.find().sort({ likesCount: -1 });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching trending posts:", error);
+        throw new ApolloError("Error occurred while fetching trending posts");
       }
     },
     getComments: async (parent, { postId }) => {
       try {
-        return await Comment.find({
-          postId,
-        });
+        console.log("Fetching comments for post with ID:", postId);
+        return await Comment.find({ postId });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching comments:", error);
+        throw new ApolloError("Error occurred while fetching comments");
       }
     },
     getPostBysearch: async (parent, { searchQuery }) => {
       try {
+        console.log("Searching for posts with query:", searchQuery);
         return await Post.find({
           title: { $regex: searchQuery, $options: "i" },
         });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while searching for posts:", error);
+        throw new ApolloError("Error occurred while searching for posts");
       }
     },
     getRandomUsers: async (parent, args) => {
       try {
+        console.log("Fetching random users");
         return await User.aggregate([{ $sample: { size: 5 } }]);
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching random users:", error);
+        throw new ApolloError("Error occurred while fetching random users");
       }
     },
     getPostsByUser: async (parent, { userId }) => {
       try {
+        console.log("Fetching posts for user with ID:", userId);
         return await Post.find({ authorId: userId });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching user posts:", error);
+        throw new ApolloError("Error occurred while fetching user posts");
       }
     },
   },
@@ -90,27 +109,27 @@ const resolvers = {
     registerUser: async (_, { username, email, password }) => {
       if (!username || !email || !password) {
         throw new ApolloError(
-          "Username, Email and Password fields are mandatory"
+          "Username, Email, and Password fields are mandatory"
         );
       }
-      // check if user exixts
+      // check if user exists
       const user = await User.findOne({ email });
       if (user) {
-        throw new ApolloError("User already exists with this e-mail");
+        throw new ApolloError("User already exists with this email");
       }
       const hashedPassword = await bcryptjs.hash(password, 10);
 
-      // Add user to the db
       try {
+        console.log("Registering new user:", username, email);
         const newUser = await User.create({
           username,
           email,
           password: hashedPassword,
         });
 
-        //Generate Token
         const token = signToken(newUser);
 
+        console.log("User registered successfully:", newUser._id);
         return {
           _id: newUser.id,
           username: newUser.username,
@@ -118,23 +137,22 @@ const resolvers = {
           token,
         };
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while registering the user:", error);
+        throw new ApolloError("Error occurred while registering the user");
       }
     },
 
     login: async (_, { email, password }) => {
       const user = await User.findOne({ email });
       if (!user) {
-        throw new AuthenticationError("No user with this email found!");
+        throw new AuthenticationError("No user with this email found");
       }
 
-      // compare the incoming password with the hashed password
       const isMatch = await bcryptjs.compare(password, user.password);
       if (!isMatch) {
-        throw new AuthenticationError("Invalid password credintials");
+        throw new AuthenticationError("Invalid password credentials");
       }
 
-      //Generate Token
       const token = signToken(user);
 
       return {
@@ -148,7 +166,6 @@ const resolvers = {
     googleLogin: async (_, { username, email }) => {
       const user = await User.findOne({ email });
       if (!user) {
-        // Add user to the db
         try {
           const newUser = await User.create({
             username,
@@ -156,7 +173,6 @@ const resolvers = {
             fromGoogle: true,
           });
 
-          //Generate Token
           const token = signToken(newUser);
 
           return {
@@ -171,10 +187,9 @@ const resolvers = {
       }
       if (!user.fromGoogle) {
         throw new ApolloError(
-          "User already registered with e-mail and password.. Please login with e-mail and password"
+          "User already registered with email and password. Please login with email and password"
         );
       } else {
-        //Generate Token
         const token = signToken(user);
 
         return {
@@ -185,214 +200,227 @@ const resolvers = {
         };
       }
     },
-    addPost: async (parent, { title, description }, context) => {
-      if (context.user) {
-        try {
-          const post = await Post.create({
-            authorId: context.user._id,
-            title,
-            description,
-          });
-
-          return post;
-        } catch (error) {
-          throw new ApolloError(error.message);
-        }
+    addPost: async (_, { title, description }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to create this resource. Please authenticate."
+        );
       }
-      throw new ApolloError(
-        "you are not authorised to create this resource, please authenticate"
-      );
+
+      try {
+        console.log("Adding new post by user:", context.user._id);
+        const post = await Post.create({
+          authorId: context.user._id,
+          title,
+          description,
+        });
+
+        console.log("Post added successfully:", post._id);
+        return post;
+      } catch (error) {
+        console.error("Error occurred while adding the post:", error);
+        throw new ApolloError("Error occurred while adding the post");
+      }
     },
-    likePost: async (parent, { postId }, context) => {
-      if (context.user) {
-        try {
-          const updatedPost = await Post.findByIdAndUpdate(postId, {
+    likePost: async (_, { postId }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to like this post. Please authenticate."
+        );
+      }
+
+      try {
+        console.log("Liking post:", postId, "by user:", context.user._id);
+        const updatedPost = await Post.findByIdAndUpdate(
+          postId,
+          {
             $addToSet: { likes: context.user._id },
             $pull: { dislikes: context.user._id },
             $inc: { likesCount: 1 },
-          });
+          },
+          { new: true }
+        );
 
-          console.log(updatedPost);
-          return updatedPost;
-        } catch (error) {
-          throw new ApolloError(error.message);
-        }
+        console.log("Post liked successfully:", updatedPost._id);
+        return updatedPost;
+      } catch (error) {
+        console.error("Error occurred while liking the post:", error);
+        throw new ApolloError("Error occurred while liking the post");
       }
-      throw new ApolloError(
-        "you are not authorised to like this post, please authenticate"
-      );
     },
-    dislikePost: async (parent, { postId }, context) => {
-      if (context.user) {
-        try {
-          const post = await Post.findById(postId);
-          const updatedPost = await Post.findByIdAndUpdate(postId, {
+    dislikePost: async (_, { postId }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to dislike this post. Please authenticate."
+        );
+      }
+
+      try {
+        console.log("Disliking post:", postId, "by user:", context.user._id);
+        const post = await Post.findById(postId);
+        const updatedPost = await Post.findByIdAndUpdate(
+          postId,
+          {
             $addToSet: { dislikes: context.user._id },
             $pull: { likes: context.user._id },
             $inc: { likesCount: post.likesCount === 0 ? 0 : -1 },
-          });
-          console.log(updatedPost);
-          return updatedPost;
-        } catch (error) {
-          throw new ApolloError(error.message);
-        }
+          },
+          { new: true }
+        );
+
+        console.log("Post disliked successfully:", updatedPost._id);
+        return updatedPost;
+      } catch (error) {
+        console.error("Error occurred while disliking the post:", error);
+        throw new ApolloError("Error occurred while disliking the post");
       }
-      throw new ApolloError(
-        "you are not authorised to dislike this post, please authenticate"
-      );
     },
-    deletePost: async (parent, { postId }, context) => {
-      if (context.user) {
-        try {
-          const post = await Post.findById(postId);
-          if (!post) {
-            throw new ApolloError("post doesnot exists");
-          }
-          if (post.authorId == context.user._id) {
-            const deletePost = await Post.findByIdAndDelete(postId);
+    deletePost: async (_, { postId }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to delete this post. Please authenticate."
+        );
+      }
 
-            return deletePost;
-          }
-
+      try {
+        console.log("Deleting post:", postId, "by user:", context.user._id);
+        const post = await Post.findById(postId);
+        if (!post) {
+          throw new ApolloError("Post does not exist");
+        }
+        if (post.authorId.toString() !== context.user._id.toString()) {
           throw new ApolloError(
-            "you are not authorised to delete this post,only owner can delete it"
+            "You are not authorized to delete this post. Only the owner can delete it."
           );
-        } catch (error) {
-          throw new ApolloError(error.message);
         }
-      }
-      throw new ApolloError(
-        "you are not authorised to delete this post, please authenticate"
-      );
-    },
-    login: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new AuthenticationError("No user with this email found!");
-      }
 
-      // compare the incoming password with the hashed password
-      const isMatch = await bcryptjs.compare(password, user.password);
-      if (!isMatch) {
-        throw new AuthenticationError("Invalid password credintials");
+        const deletedPost = await Post.findByIdAndDelete(postId);
+
+        console.log("Post deleted successfully:", deletedPost._id);
+        return deletedPost;
+      } catch (error) {
+        console.error("Error occurred while deleting the post:", error);
+        throw new ApolloError("Error occurred while deleting the post");
       }
-
-      //Generate Token
-      const token = signToken(user);
-
-      return {
-        _id: user.id,
-        username: user.username,
-        email: user.email,
-        token,
-      };
     },
     addComment: async (_, { postId, description }, context) => {
-      if (context.user) {
-        try {
-          const comment = await Comment.create({
-            authorId: context.user._id,
-            postId,
-            description,
-          });
-          return comment;
-        } catch (error) {
-          throw new ApolloError(error.message);
-        }
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to create this resource. Please authenticate."
+        );
       }
-      throw new ApolloError(
-        "you are not authorised to create this resource, please authenticate"
-      );
-    },
-    deleteComment: async (parent, { commentId }, context) => {
-      if (context.user) {
-        try {
-          const comment = await Comment.findById(commentId);
-          if (!comment) {
-            throw new ApolloError("comment does not exists");
-          }
-          if (comment.authorId == context.user._id) {
-            const deleteComment = await Comment.findByIdAndDelete(commentId);
-            return deleteComment;
-          }
 
+      try {
+        console.log(
+          "Adding new comment by user:",
+          context.user._id,
+          "for post:",
+          postId
+        );
+        const comment = await Comment.create({
+          authorId: context.user._id,
+          postId,
+          description,
+        });
+
+        console.log("Comment added successfully:", comment._id);
+        return comment;
+      } catch (error) {
+        console.error("Error occurred while adding the comment:", error);
+        throw new ApolloError("Error occurred while adding the comment");
+      }
+    },
+    deleteComment: async (_, { commentId }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to delete this comment. Please authenticate."
+        );
+      }
+
+      try {
+        console.log(
+          "Deleting comment:",
+          commentId,
+          "by user:",
+          context.user._id
+        );
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+          throw new ApolloError("Comment does not exist");
+        }
+        if (comment.authorId.toString() !== context.user._id.toString()) {
           throw new ApolloError(
-            "you are not authorised to delete this post,only owner can delete it"
+            "You are not authorized to delete this comment. Only the owner can delete it."
           );
-        } catch (error) {
-          throw new ApolloError(error.message);
         }
+
+        const deletedComment = await Comment.findByIdAndDelete(commentId);
+
+        console.log("Comment deleted successfully:", deletedComment._id);
+        return deletedComment;
+      } catch (error) {
+        console.error("Error occurred while deleting the comment:", error);
+        throw new ApolloError("Error occurred while deleting the comment");
       }
-      throw new ApolloError(
-        "you are not authorised to delete this post, please authenticate"
-      );
     },
-    followUser: async (parent, { followUserId }, context) => {
-      if (context.user) {
-        try {
-          const updatedUser = await User.findByIdAndUpdate(
-            context.user._id,
-            {
-              $addToSet: { followingUsers: followUserId },
-            },
-            { new: true }
-          );
-
-          await User.findByIdAndUpdate(followUserId, {
-            $inc: { followers: 1 },
-          });
-          return updatedUser;
-        } catch (error) {
-          throw new ApolloError(error.message);
-        }
+    followUser: async (_, { followUserId }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to perform this action. Please authenticate."
+        );
       }
-      throw new ApolloError(
-        "you are not authorised to create this user, please authenticate first"
-      );
-    },
-    unfollowUser: async (parent, { unfollowUserId }, context) => {
-      if (context.user) {
-        try {
-          const updatedUser = await User.findByIdAndUpdate(
-            context.user._id,
-            {
-              $pull: { followingUsers: unfollowUserId },
-            },
-            { new: true }
-          );
 
-          await User.findByIdAndUpdate(unfollowUserId, {
-            $inc: { followers: -1 },
-          });
-          return updatedUser;
-        } catch (error) {
-          throw new ApolloError(error.message);
-        }
+      try {
+        console.log("User:", context.user._id, "following user:", followUserId);
+        const updatedUser = await User.findByIdAndUpdate(
+          context.user._id,
+          { $addToSet: { followingUsers: followUserId } },
+          { new: true }
+        );
+
+        await User.findByIdAndUpdate(followUserId, {
+          $inc: { followers: 1 },
+        });
+
+        console.log("User followed successfully:", updatedUser._id);
+        return updatedUser;
+      } catch (error) {
+        console.error("Error occurred while following the user:", error);
+        throw new ApolloError("Error occurred while following the user");
       }
-      throw new ApolloError(
-        "you are not authorised to unfolloe this user, please authenticate first"
-      );
     },
-    // createPaymentIntent: async (_, { amount }, context) => {
-    //   console.log("line 377");
-    //   if (!context.user) {
-    //     throw new AuthenticationError("Not authenticated");
-    //   }
+    unfollowUser: async (_, { unfollowUserId }, context) => {
+      if (!context.user) {
+        throw new ApolloError(
+          "You are not authorized to perform this action. Please authenticate."
+        );
+      }
 
-    //   try {
-    //     const paymentIntent = await stripe.paymentIntents.create({
-    //       amount: amount * 100, // Amount should be in cents (i.e. $10.00 is written as 1000)
-    //       currency: "AUD",
-    //     });
+      try {
+        console.log(
+          "User:",
+          context.user._id,
+          "unfollowing user:",
+          unfollowUserId
+        );
+        const updatedUser = await User.findByIdAndUpdate(
+          context.user._id,
+          { $pull: { followingUsers: unfollowUserId } },
+          { new: true }
+        );
 
-    //     return {
-    //       id: paymentIntent.id,
-    //       client_secret: paymentIntent.client_secret,
-    //     };
-    //   } catch (error) {
-    //     throw new ApolloError(error.message);
-    //   }
-    // },
+        await User.findByIdAndUpdate(unfollowUserId, {
+          $inc: { followers: -1 },
+        });
+
+        console.log("User unfollowed successfully:", updatedUser._id);
+        return updatedUser;
+      } catch (error) {
+        console.error("Error occurred while unfollowing the user:", error);
+        throw new ApolloError("Error occurred while unfollowing the user");
+      }
+    },
+
     createCheckoutSession: async (_, { email }, context) => {
       if (!context.user) {
         throw new AuthenticationError("Not authenticated");
@@ -419,7 +447,7 @@ const resolvers = {
           sessionID: session.id,
         };
       } catch (error) {
-        console.log(error) // log the error
+        console.log(error); // log the error
         throw new ApolloError(error.message);
       }
     },
@@ -428,25 +456,41 @@ const resolvers = {
   Post: {
     author: async (parent) => {
       try {
+        console.log("Fetching author for post:", parent._id);
         return await User.findOne({ _id: parent.authorId });
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error("Error occurred while fetching the author:", error);
+        throw new ApolloError("Error occurred while fetching the author");
       }
     },
     commentsCount: async (parent) => {
       try {
-        return await Comment.find({ postId: parent._id }).count();
+        console.log("Fetching comments count for post:", parent._id);
+        return await Comment.find({ postId: parent._id }).countDocuments();
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error(
+          "Error occurred while fetching the comments count:",
+          error
+        );
+        throw new ApolloError(
+          "Error occurred while fetching the comments count"
+        );
       }
     },
   },
   User: {
     postsCount: async (parent) => {
       try {
-        return await Post.find({ authorId: parent._id }).count();
+        console.log("Fetching posts count for user:", parent._id);
+        return await Post.find({ authorId: parent._id }).countDocuments();
       } catch (error) {
-        throw new ApolloError(error.message);
+        console.error(
+          "Error occurred while fetching the user's posts count:",
+          error
+        );
+        throw new ApolloError(
+          "Error occurred while fetching the user's posts count"
+        );
       }
     },
   },
