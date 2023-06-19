@@ -14,9 +14,12 @@ const userSchema = new Schema({
   },
   password: {
     type: String,
-    required: [true, "Password is required"],
+    //required: [true, "Password is required"],
   },
-
+  fromGoogle: {
+    type: Boolean,
+    default: false,
+  },
   bio: {
     type: String,
     maxLength: [500, "must be no more than characters"],

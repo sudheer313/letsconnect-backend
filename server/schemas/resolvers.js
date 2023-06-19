@@ -4,6 +4,7 @@ const bcryptjs = require("bcryptjs");
 const { signToken } = require("../utils/auth");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
+const stripeAPI = require("stripe")(process.env.STRIPE_SECRET_KEY); //STRIPE Secret Key
 
 const resolvers = {
   Query: {
@@ -19,7 +20,7 @@ const resolvers = {
       try {
         return await User.find();
       } catch (error) {
-        throw new ApolloError("error.message");
+        throw new ApolloError(error.message);
       }
     },
     getUser: async (parent, { userId }) => {
@@ -33,7 +34,7 @@ const resolvers = {
       try {
         return await Post.find();
       } catch (error) {
-        throw new ApolloError("error.message");
+        throw new ApolloError(error.message);
       }
     },
 
@@ -48,7 +49,7 @@ const resolvers = {
       try {
         return await Post.find().sort({ likesCount: -1 });
       } catch (error) {
-        throw new ApolloError("error.message");
+        throw new ApolloError(error.message);
       }
     },
     getComments: async (parent, { postId }) => {
@@ -57,7 +58,7 @@ const resolvers = {
           postId,
         });
       } catch (error) {
-        throw new ApolloError("error.message");
+        throw new ApolloError(error.message);
       }
     },
     getPostBysearch: async (parent, { searchQuery }) => {
@@ -66,7 +67,7 @@ const resolvers = {
           title: { $regex: searchQuery, $options: "i" },
         });
       } catch (error) {
-        throw new ApolloError("error.message");
+        throw new ApolloError(error.message);
       }
     },
     getRandomUsers: async (parent, args) => {
@@ -87,6 +88,11 @@ const resolvers = {
 
   Mutation: {
     registerUser: async (_, { username, email, password }) => {
+      if (!username || !email || !password) {
+        throw new ApolloError(
+          "Username, Email and Password fields are mandatory"
+        );
+      }
       // check if user exixts
       const user = await User.findOne({ email });
       if (user) {
@@ -137,6 +143,47 @@ const resolvers = {
         email: user.email,
         token,
       };
+    },
+
+    googleLogin: async (_, { username, email }) => {
+      const user = await User.findOne({ email });
+      if (!user) {
+        // Add user to the db
+        try {
+          const newUser = await User.create({
+            username,
+            email,
+            fromGoogle: true,
+          });
+
+          //Generate Token
+          const token = signToken(newUser);
+
+          return {
+            _id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            token,
+          };
+        } catch (error) {
+          throw new ApolloError(error.message);
+        }
+      }
+      if (!user.fromGoogle) {
+        throw new ApolloError(
+          "User already registered with e-mail and password.. Please login with e-mail and password"
+        );
+      } else {
+        //Generate Token
+        const token = signToken(user);
+
+        return {
+          _id: user.id,
+          username: user.username,
+          email: user.email,
+          token,
+        };
+      }
     },
     addPost: async (parent, { title, description }, context) => {
       if (context.user) {
@@ -325,6 +372,56 @@ const resolvers = {
       throw new ApolloError(
         "you are not authorised to unfolloe this user, please authenticate first"
       );
+    },
+    // createPaymentIntent: async (_, { amount }, context) => {
+    //   console.log("line 377");
+    //   if (!context.user) {
+    //     throw new AuthenticationError("Not authenticated");
+    //   }
+
+    //   try {
+    //     const paymentIntent = await stripe.paymentIntents.create({
+    //       amount: amount * 100, // Amount should be in cents (i.e. $10.00 is written as 1000)
+    //       currency: "AUD",
+    //     });
+
+    //     return {
+    //       id: paymentIntent.id,
+    //       client_secret: paymentIntent.client_secret,
+    //     };
+    //   } catch (error) {
+    //     throw new ApolloError(error.message);
+    //   }
+    // },
+    createCheckoutSession: async (_, { email }, context) => {
+      if (!context.user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+      try {
+        const session = await stripeAPI.checkout.sessions.create({
+          customer_email: email,
+          payment_method_types: ["card"],
+          mode: "payment",
+          line_items: [
+            {
+              price_data: {
+                currency: "aud",
+                product: "prod_O5kvuYeqhqD558",
+                unit_amount: 5 * 100,
+              },
+              quantity: 1,
+            },
+          ],
+          success_url: `${process.env.CLIENT_URL}`,
+          cancel_url: `${process.env.CLIENT_URL}`,
+        });
+        return {
+          sessionID: session.id,
+        };
+      } catch (error) {
+        console.log(error) // log the error
+        throw new ApolloError(error.message);
+      }
     },
   },
 
