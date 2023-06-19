@@ -2,48 +2,27 @@ const express = require("express");
 const { ApolloServer } = require("apollo-server-express");
 const mongoose = require("mongoose");
 require("dotenv").config();
+const { authMiddleware } = require("./utils/auth");
 
 // Import the necessary modules
 const { typeDefs, resolvers } = require("./schemas");
-const { authMiddleware } = require("./utils/auth");
-const admin = require("firebase-admin");
-
-// Create a Firebase credentials object using environment variables
-let privateKey;
-if (process.env.NODE_ENV !== "production") {
-  privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
-} else {
-  privateKey = process.env.FIREBASE_PRIVATE_KEY;
-}
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey,
-    }),
-    databaseURL: process.env.FIREBASE_DATABASE_URL,
-  });
-}
 
 // Set up your Express app
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-// Connect to MongoDB
+// Connect to MongoDB database
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    useCreateIndex: true,
   })
   .then(() => {
-    console.log("Connected to MongoDB");
+    console.log("Connected to MongoDB database");
   })
   .catch((error) => {
-    console.error("Error connecting to MongoDB:", error);
+    console.error("Error connecting to MongoDB database:", error);
   });
 
 // Create the Apollo Server with the necessary configuration

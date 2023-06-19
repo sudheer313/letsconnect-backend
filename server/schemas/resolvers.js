@@ -20,7 +20,7 @@ const resolvers = {
         "You are not authorized to access this resource. Please authenticate."
       );
     },
-    getAllUsers: async (parent, args) => {
+    getAllUsers: async () => {
       try {
         console.log("Fetching all users");
         return await User.find();
@@ -29,7 +29,7 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching all users");
       }
     },
-    getUser: async (parent, { userId }) => {
+    getUser: async (_, { userId }) => {
       try {
         console.log("Fetching user with ID:", userId);
         return await User.findOne({ _id: userId });
@@ -38,7 +38,7 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching the user");
       }
     },
-    getAllPosts: async (parent, args) => {
+    getAllPosts: async () => {
       try {
         console.log("Fetching all posts");
         return await Post.find();
@@ -56,7 +56,8 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching the post");
       }
     },
-    getAllTrendingPosts: async (parent, args) => {
+
+    getAllTrendingPosts: async () => {
       try {
         console.log("Fetching all trending posts");
         return await Post.find().sort({ likesCount: -1 });
@@ -65,7 +66,7 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching trending posts");
       }
     },
-    getComments: async (parent, { postId }) => {
+    getComments: async (_, { postId }) => {
       try {
         console.log("Fetching comments for post with ID:", postId);
         return await Comment.find({ postId });
@@ -74,7 +75,7 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching comments");
       }
     },
-    getPostBysearch: async (parent, { searchQuery }) => {
+    getPostBySearch: async (_, { searchQuery }) => {
       try {
         console.log("Searching for posts with query:", searchQuery);
         return await Post.find({
@@ -85,7 +86,7 @@ const resolvers = {
         throw new ApolloError("Error occurred while searching for posts");
       }
     },
-    getRandomUsers: async (parent, args) => {
+    getRandomUsers: async () => {
       try {
         console.log("Fetching random users");
         return await User.aggregate([{ $sample: { size: 5 } }]);
@@ -94,7 +95,7 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching random users");
       }
     },
-    getPostsByUser: async (parent, { userId }) => {
+    getPostsByUser: async (_, { userId }) => {
       try {
         console.log("Fetching posts for user with ID:", userId);
         return await Post.find({ authorId: userId });
@@ -165,6 +166,7 @@ const resolvers = {
 
     googleLogin: async (_, { username, email }) => {
       const user = await User.findOne({ email });
+
       if (!user) {
         try {
           const newUser = await User.create({
@@ -185,21 +187,49 @@ const resolvers = {
           throw new ApolloError(error.message);
         }
       }
+
       if (!user.fromGoogle) {
         throw new ApolloError(
           "User already registered with email and password. Please login with email and password"
         );
       } else {
-        const token = signToken(user);
+        const userWithPassword = await User.findOne({ email }).select(
+          "+password"
+        );
 
-        return {
-          _id: user.id,
-          username: user.username,
-          email: user.email,
-          token,
-        };
+        if (!userWithPassword) {
+          throw new AuthenticationError("No user found with this email");
+        }
+
+        console.log("Email: ", email);
+        console.log("User Password: ", userWithPassword.password);
+
+        const isMatch = await bcryptjs.compare(
+          userWithPassword.password,
+          user.password
+        );
+
+        if (!isMatch) {
+          throw new AuthenticationError("Incorrect password");
+        }
+
+        try {
+          const token = signToken(user);
+
+          return {
+            _id: user.id,
+            username: user.username,
+            email: user.email,
+            token,
+          };
+        } catch (error) {
+          throw new ApolloError(
+            "Error occurred while generating the authentication token"
+          );
+        }
       }
     },
+
     addPost: async (_, { title, description }, context) => {
       if (!context.user) {
         throw new ApolloError(
