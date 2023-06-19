@@ -145,25 +145,25 @@ const resolvers = {
 
     login: async (_, { email, password }) => {
       // Use .select('+password') to explicitly include the password field
-      const user = await User.findOne({ email }).select('+password');
-    
+      const user = await User.findOne({ email }).select("+password");
+
       if (!user) {
         throw new AuthenticationError("No user found with this email");
       }
-    
+
       console.log("Email: ", email);
       console.log("User Password: ", user.password);
       console.log("Provided Password: ", password);
-    
+
       const isMatch = await bcryptjs.compare(password, user.password);
-    
+
       if (!isMatch) {
         throw new AuthenticationError("Incorrect password");
       }
-    
+
       try {
         const token = signToken(user);
-    
+
         return {
           _id: user.id,
           username: user.username,
@@ -176,7 +176,6 @@ const resolvers = {
         );
       }
     },
-    
 
     googleLogin: async (_, { username, email }) => {
       const user = await User.findOne({ email });
@@ -200,46 +199,26 @@ const resolvers = {
         } catch (error) {
           throw new ApolloError(error.message);
         }
-      }
-
-      if (!user.fromGoogle) {
-        throw new ApolloError(
-          "User already registered with email and password. Please login with email and password"
-        );
       } else {
-        const userWithPassword = await User.findOne({ email }).select(
-          "+password"
-        );
-
-        if (!userWithPassword) {
-          throw new AuthenticationError("No user found with this email");
-        }
-
-        console.log("Email: ", email);
-        console.log("User Password: ", userWithPassword.password);
-
-        const isMatch = await bcryptjs.compare(
-          userWithPassword.password,
-          user.password
-        );
-
-        if (!isMatch) {
-          throw new AuthenticationError("Incorrect password");
-        }
-
-        try {
-          const token = signToken(user);
-
-          return {
-            _id: user.id,
-            username: user.username,
-            email: user.email,
-            token,
-          };
-        } catch (error) {
+        if (!user.fromGoogle) {
           throw new ApolloError(
-            "Error occurred while generating the authentication token"
+            "User already registered with email and password. Please login with email and password"
           );
+        } else {
+          try {
+            const token = signToken(user);
+
+            return {
+              _id: user.id,
+              username: user.username,
+              email: user.email,
+              token,
+            };
+          } catch (error) {
+            throw new ApolloError(
+              "Error occurred while generating the authentication token"
+            );
+          }
         }
       }
     },
@@ -263,7 +242,9 @@ const resolvers = {
         return post;
       } catch (error) {
         console.error("Error occurred while adding the post:", error);
-        throw new ApolloError("Error occurred while adding the post");
+        throw new ApolloError(
+          "Error occurred while adding the post: " + error.message
+        );
       }
     },
     likePost: async (_, { postId }, context) => {

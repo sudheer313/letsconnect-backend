@@ -19,15 +19,16 @@ const authMiddleware = async ({ req }) => {
 
   try {
     const token = authorizationHeader.split(" ")[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    req.user = decodedToken;
+    jwt.verify(token, process.env.JWT_SECRET, (err, decodedToken) => {
+      if (err) {
+        throw new AuthenticationError("Invalid Token");
+      } else {
+        req.user = decodedToken.data;
+      }
+    });
   } catch (err) {
-    if (err instanceof admin.auth.AuthError) {
-      throw new AuthenticationError("Invalid Token");
-    } else {
-      console.log("Error verifying token:", err);
-      throw new AuthenticationError("Error verifying token");
-    }
+    console.log("Error verifying token:", err);
+    throw new AuthenticationError("Error verifying token");
   }
 
   return req;

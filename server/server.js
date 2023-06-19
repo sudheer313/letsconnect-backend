@@ -30,6 +30,10 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
   context: authMiddleware,
+  formatError: (err) => {
+    console.log(err);
+    return err;
+  },
 });
 
 // Start the server and apply the middleware once it's started
@@ -40,6 +44,12 @@ async function startApolloServer() {
 
 // Call the startApolloServer function to start the server
 startApolloServer().then(() => {
+  // Error handling middleware
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send("Something broke!");
+  });
+
   // Start listening for incoming requests
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
