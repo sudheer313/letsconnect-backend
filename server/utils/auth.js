@@ -2,15 +2,6 @@ const { AuthenticationError } = require("apollo-server-express");
 const jwt = require("jsonwebtoken");
 const admin = require("firebase-admin");
 
-// Initialize Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-});
-
 const signToken = ({ email, name, _id }) => {
   const payload = { email, name, _id };
   return jwt.sign({ data: payload }, process.env.JWT_SECRET, {
@@ -23,7 +14,7 @@ const authMiddleware = async ({ req }) => {
   const authorizationHeader = req.headers.authorization;
 
   if (!authorizationHeader) {
-    throw new AuthenticationError("Authorization header missing");
+    return req;
   }
 
   try {

@@ -144,25 +144,39 @@ const resolvers = {
     },
 
     login: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
+      // Use .select('+password') to explicitly include the password field
+      const user = await User.findOne({ email }).select('+password');
+    
       if (!user) {
-        throw new AuthenticationError("No user with this email found");
+        throw new AuthenticationError("No user found with this email");
       }
-
+    
+      console.log("Email: ", email);
+      console.log("User Password: ", user.password);
+      console.log("Provided Password: ", password);
+    
       const isMatch = await bcryptjs.compare(password, user.password);
+    
       if (!isMatch) {
-        throw new AuthenticationError("Invalid password credentials");
+        throw new AuthenticationError("Incorrect password");
       }
-
-      const token = signToken(user);
-
-      return {
-        _id: user.id,
-        username: user.username,
-        email: user.email,
-        token,
-      };
+    
+      try {
+        const token = signToken(user);
+    
+        return {
+          _id: user.id,
+          username: user.username,
+          email: user.email,
+          token,
+        };
+      } catch (error) {
+        throw new ApolloError(
+          "Error occurred while generating the authentication token"
+        );
+      }
     },
+    
 
     googleLogin: async (_, { username, email }) => {
       const user = await User.findOne({ email });
