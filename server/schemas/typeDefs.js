@@ -43,8 +43,7 @@ const typeDefs = gql`
     getAllTrendingPosts: [Post]
     getPost(postId: ID!): Post
     getPostBySearch(searchQuery: String!): [Post]
-    getComments(postId: ID!): [Comment!]
-    getPostBysearch(searchQuery: String!): [Post]
+    getComments(postId: ID!): [Comment]
     getRandomUsers: [User]
     getPostsByUser(userId: ID!): [Post]
   }

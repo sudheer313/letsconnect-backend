@@ -5,6 +5,7 @@ const User = require("../models/User");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
 const stripeAPI = require("stripe")(process.env.STRIPE_SECRET_KEY); // STRIPE Secret Key
+const sendEmail = require("../utils/email");
 
 const resolvers = {
   Query: {
@@ -22,85 +23,84 @@ const resolvers = {
     },
     getAllUsers: async () => {
       try {
-        console.log("Fetching all users");
+        // console.log("Fetching all users");
         return await User.find();
       } catch (error) {
-        console.error("Error occurred while fetching all users:", error);
+        //  console.error("Error occurred while fetching all users:", error);
         throw new ApolloError("Error occurred while fetching all users");
       }
     },
     getUser: async (_, { userId }) => {
       try {
-        console.log("Fetching user with ID:", userId);
+        //  console.log("Fetching user with ID:", userId);
         return await User.findOne({ _id: userId });
       } catch (error) {
-        console.error("Error occurred while fetching the user:", error);
+        //console.error("Error occurred while fetching the user:", error);
         throw new ApolloError("Error occurred while fetching the user");
       }
     },
     getAllPosts: async () => {
       try {
-        console.log("Fetching all posts");
+        // console.log("Fetching all posts");
         return await Post.find();
       } catch (error) {
-        console.error("Error occurred while fetching all posts:", error);
+        //console.error("Error occurred while fetching all posts:", error);
         throw new ApolloError("Error occurred while fetching all posts");
       }
     },
     getPost: async (_, { postId }) => {
       try {
-        console.log("Fetching post with ID:", postId);
+        //console.log("Fetching post with ID:", postId);
         return await Post.findOne({ _id: postId });
       } catch (error) {
-        console.error("Error occurred while fetching the post:", error);
+        //console.error("Error occurred while fetching the post:", error);
         throw new ApolloError("Error occurred while fetching the post");
       }
     },
 
     getAllTrendingPosts: async () => {
       try {
-        console.log("Fetching all trending posts");
+        //console.log("Fetching all trending posts");
         return await Post.find().sort({ likesCount: -1 });
       } catch (error) {
-        console.error("Error occurred while fetching trending posts:", error);
+        //console.error("Error occurred while fetching trending posts:", error);
         throw new ApolloError("Error occurred while fetching trending posts");
       }
     },
     getComments: async (_, { postId }) => {
       try {
-        console.log("Fetching comments for post with ID:", postId);
+        // console.log("Fetching comments for post with ID:", postId);
         return await Comment.find({ postId });
       } catch (error) {
-        console.error("Error occurred while fetching comments:", error);
+        //console.error("Error occurred while fetching comments:", error);
         throw new ApolloError("Error occurred while fetching comments");
       }
     },
-    getPostBySearch: async (_, { searchQuery }) => {
+    getPostBySearch: async (parent, { searchQuery }) => {
       try {
-        console.log("Searching for posts with query:", searchQuery);
         return await Post.find({
           title: { $regex: searchQuery, $options: "i" },
         });
       } catch (error) {
-        console.error("Error occurred while searching for posts:", error);
-        throw new ApolloError("Error occurred while searching for posts");
+        throw new ApolloError(error.message);
       }
     },
+
     getRandomUsers: async () => {
       try {
-        console.log("Fetching random users");
+        //console.log("Fetching random users");
         return await User.aggregate([{ $sample: { size: 5 } }]);
       } catch (error) {
-        console.error("Error occurred while fetching random users:", error);
+        //console.error("Error occurred while fetching random users:", error);
         throw new ApolloError("Error occurred while fetching random users");
       }
     },
     getPostsByUser: async (_, { userId }) => {
       try {
-        console.log("Fetching posts for user with ID:", userId);
+        //console.log("Fetching posts for user with ID:", userId);
         return await Post.find({ authorId: userId });
       } catch (error) {
-        console.error("Error occurred while fetching user posts:", error);
+        //console.error("Error occurred while fetching user posts:", error);
         throw new ApolloError("Error occurred while fetching user posts");
       }
     },
@@ -468,6 +468,18 @@ const resolvers = {
           success_url: `${process.env.CLIENT_URL}`,
           cancel_url: `${process.env.CLIENT_URL}`,
         });
+
+        // Prepare message
+        const subject = "Thank you for your donation!";
+        const text =
+          "Thank you for your donation to Greenpeace. Your support is greatly appreciated.";
+        const html =
+          "<strong>Thank you for your donation to Greenpeace. Your support is greatly appreciated.</strong>";
+
+        // Send confirmation email after successful session creation
+        await sendEmail(email, subject, text, html);
+        console.log(`Email sent to ${email}`);
+
         return {
           sessionID: session.id,
         };

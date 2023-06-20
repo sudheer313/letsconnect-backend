@@ -6,7 +6,10 @@ const postSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
-
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
     title: {
       type: String,
       required: [true, "Title is required"],
@@ -15,7 +18,7 @@ const postSchema = new Schema(
     },
     description: {
       type: String,
-      required: [true, "description is required"],
+      required: [true, "Description is required"],
       maxLength: [800, "Must be no more than 800 characters"],
     },
     likesCount: {
