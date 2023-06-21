@@ -104,6 +104,10 @@ const resolvers = {
         throw new ApolloError("Error occurred while fetching user posts");
       }
     },
+    getComments: async (_, { postId }, { Comment }) => {
+      const comments = await Comment.find({ postId });
+      return comments;
+    },
   },
 
   Mutation: {
@@ -342,6 +346,8 @@ const resolvers = {
           "for post:",
           postId
         );
+
+        // Create new comment
         const comment = await Comment.create({
           authorId: context.user._id,
           postId,
@@ -349,12 +355,20 @@ const resolvers = {
         });
 
         console.log("Comment added successfully:", comment._id);
+
+        // Find the post and update it with the new comment
+        await Post.findByIdAndUpdate(postId, {
+          $push: { comments: comment._id },
+        });
+
+        // Now that the comment has been added to the post, return the comment
         return comment;
       } catch (error) {
         console.error("Error occurred while adding the comment:", error);
         throw new ApolloError("Error occurred while adding the comment");
       }
     },
+
     deleteComment: async (_, { commentId }, context) => {
       if (!context.user) {
         throw new ApolloError(
@@ -488,6 +502,7 @@ const resolvers = {
         throw new ApolloError(error.message);
       }
     },
+
   },
 
   Post: {

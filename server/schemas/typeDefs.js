@@ -29,6 +29,7 @@ const typeDefs = gql`
     authorId: ID!
     postId: ID!
     description: String!
+    author: User
   }
 
   type CheckoutSession {
@@ -56,7 +57,7 @@ const typeDefs = gql`
     deletePost(postId: ID!): Post!
     likePost(postId: ID!): Post!
     dislikePost(postId: ID!): Post!
-    addComment(postId: ID!, description: String!): Comment!
+    addComment(postId: ID!, description: String!): Comment
     deleteComment(commentId: ID!): Comment!
     followUser(followUserId: ID!): User!
     unfollowUser(unfollowUserId: ID!): User!

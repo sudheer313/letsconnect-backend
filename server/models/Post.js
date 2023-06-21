@@ -33,6 +33,13 @@ const postSchema = new Schema(
       type: [String],
       default: [],
     },
+    // Add this field for comments
+    comments: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Comment",
+      },
+    ],
   },
   { timestamps: true }
 );
